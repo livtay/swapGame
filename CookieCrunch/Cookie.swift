@@ -29,7 +29,7 @@ enum CookieType: Int, CustomStringConvertible {
     }
     
     static func random() -> CookieType {
-        return CookieType(rawValue: Int(arc4random_uniform(6)) + 1)!
+        return CookieType(rawValue: Int(arc4random_uniform(6)) + 1)! //(6)
     }
     
     var description: String {

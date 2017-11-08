@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import SpriteKit
 
 let NumColumns = 9
 let NumRows = 9
@@ -101,7 +102,7 @@ class Level {
         swap.cookieA.row = rowB
     }
     
-    func detectPossibleSwaps() {
+    func detectPossibleSwaps() -> Int {
         var set = Set<Swap>()
         for row in 0..<NumRows {
             for column in 0..<NumColumns {
@@ -113,9 +114,12 @@ class Level {
                             // Swap them
                             cookies[column, row] = other
                             cookies[column + 1, row] = cookie
+                            var containsSpecialType = false
+                            if cookie.cookieType == .bomb || other.cookieType == .bomb {
+                                containsSpecialType = true
+                            }
                             // Is either cookie now part of a chain?
-                            if hasChainAt(column: column + 1, row: row) ||
-                                hasChainAt(column: column, row: row) {
+                            if hasChainAt(column: column + 1, row: row) || hasChainAt(column: column, row: row) || containsSpecialType {
                                 set.insert(Swap(cookieA: cookie, cookieB: other))
                             }
                             // Swap them back
@@ -127,10 +131,12 @@ class Level {
                         if let other = cookies[column, row + 1] {
                             cookies[column, row] = other
                             cookies[column, row + 1] = cookie
-                            
+                            var containsSpecialType = false
+                            if cookie.cookieType == .bomb || other.cookieType == .bomb {
+                                containsSpecialType = true
+                            }
                             // Is either cookie now part of a chain?
-                            if hasChainAt(column: column, row: row + 1) ||
-                                hasChainAt(column: column, row: row) {
+                            if hasChainAt(column: column, row: row + 1) || hasChainAt(column: column, row: row) || containsSpecialType {
                                 set.insert(Swap(cookieA: cookie, cookieB: other))
                             }
                             
@@ -143,7 +149,7 @@ class Level {
             }
         }
         possibleSwaps = set
-//        print("\(possibleSwaps.count) SWAPS")
+        return possibleSwaps.count
     }
     
     private func hasChainAt(column: Int, row: Int) -> Bool {
@@ -273,6 +279,40 @@ class Level {
                 }
             }
         }
+    }
+    
+    var bombs = [Cookie]()
+    var bombCount = 1
+    
+    func handleBombs(column: Int, row: Int) -> Int {
+        bombCount += 1
+        bombs = []
+        for col in (column - 1)...(column + 1) {
+            for r in (row - 1)...(row + 1) {
+//                print("*** (\(col), \(r))")
+                if col >= 0 && r >= 0 && col <= 8 && r <= 8 {
+                    if tiles[col, r] != nil && cookies[col, r] != nil {
+                        let cookie = cookies[col, r]
+                        if let sprite = cookie?.sprite {
+                            if sprite.action(forKey: "removing") == nil {
+                                let scaleAction = SKAction.scale(to: 0, duration: 1.0)
+                                scaleAction.timingMode = .easeOut
+                                sprite.run(SKAction.sequence([scaleAction, SKAction.removeFromParent()]),
+                                           withKey:"removing")
+                            }
+                        }
+                        if cookie?.cookieType == .bomb {
+                            bombs.append(cookie!)
+                        }
+                        cookies[col, r] = nil
+                    }
+                }
+            }
+        }
+        for bomb in bombs {
+            _ = handleBombs(column: bomb.column, row: bomb.row)
+        }
+        return bombCount
     }
     
     func fillHoles() -> [[Cookie]] {

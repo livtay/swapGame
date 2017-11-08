@@ -325,6 +325,26 @@ class GameScene: SKScene {
         scoreLabel.run(SKAction.sequence([moveAction, SKAction.removeFromParent()]))
     }
     
+    func animateCookieScore(for cookie: Cookie, score: Int) {
+        // Figure out what the midpoint of the chain is.
+        let firstSprite = cookie.sprite!
+        let centerPosition = CGPoint(
+            x: (firstSprite.position.x),
+            y: (firstSprite.position.y) - 8)
+        
+        // Add a label for the score that slowly floats up.
+        let scoreLabel = SKLabelNode(fontNamed: "GillSans-BoldItalic")
+        scoreLabel.fontSize = 16
+        scoreLabel.text = String(format: "%ld", score)
+        scoreLabel.position = centerPosition
+        scoreLabel.zPosition = 300
+        cookiesLayer.addChild(scoreLabel)
+        
+        let moveAction = SKAction.move(by: CGVector(dx: 0, dy: 3), duration: 0.7)
+        moveAction.timingMode = .easeOut
+        scoreLabel.run(SKAction.sequence([moveAction, SKAction.removeFromParent()]))
+    }
+    
     func animateGameOver(_ completion: @escaping () -> ()) {
         let action = SKAction.move(by: CGVector(dx: 0, dy: -size.height), duration: 0.3)
         action.timingMode = .easeIn

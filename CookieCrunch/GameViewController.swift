@@ -97,7 +97,20 @@ class GameViewController: UIViewController {
         view.isUserInteractionEnabled = false
         if level.isPossibleSwap(swap) {
             level.performSwap(swap: swap)
-            scene.animate(swap, completion: handleMatches)
+            if swap.cookieA.cookieType == .bomb || swap.cookieB.cookieType == .bomb {
+                var endCookie = swap.cookieA
+                if swap.cookieA.cookieType != .bomb {
+                    endCookie = swap.cookieB
+                }
+                scene.animate(swap) {
+                    self.handleBombs(column: endCookie.column, row: endCookie.row, cookie: endCookie)
+                    self.handleMatches(isBomb: false)
+                }
+            } else {
+                scene.animate(swap) {
+                    self.handleMatches(isBomb: false)
+                }
+            }
         } else {
             scene.animateInvalidSwap(swap) {
                 self.view.isUserInteractionEnabled = true
@@ -105,10 +118,30 @@ class GameViewController: UIViewController {
         }
     }
     
-    func handleMatches() {
+    func handleBombs(column: Int, row: Int, cookie: Cookie) {
+        level.bombCount = 1
+        let count = level.handleBombs(column: column, row: row)
+        if count - 2 > 0 {
+            self.score += count * 9 * 60
+        }
+        scene.animateCookieScore(for: cookie, score: (count * 9 * 60))
+        self.updateLabels()
+        let columns = self.level.fillHoles()
+        self.scene.animateFallingCookies(columns: columns) {
+            let columns = self.level.topUpCookies()
+            self.scene.animateNewCookies(columns) {
+                self.handleMatches(isBomb: true)
+            }
+        }
+    }
+    
+    func handleMatches(isBomb: Bool) {
         let chains = level.removeMatches()
         if chains.count == 0 {
-            beginNextTurn()
+            _ = level.detectPossibleSwaps()
+            if !isBomb {
+                beginNextTurn()
+            }
             return
         }
         scene.animateMatchedCookies(for: chains) {
@@ -121,16 +154,20 @@ class GameViewController: UIViewController {
             self.scene.animateFallingCookies(columns: columns) {
                 let columns = self.level.topUpCookies()
                 self.scene.animateNewCookies(columns) {
-                    self.handleMatches()
+                    self.handleMatches(isBomb: false)
                 }
             }
         }
     }
     
     func beginNextTurn() {
-        level.detectPossibleSwaps()
+        let count = level.detectPossibleSwaps()
         view.isUserInteractionEnabled = true
         decrementMoves()
+        level.resetComboMultiplier()
+        if count == 0 {
+            self.shuffle()
+        }
     }
     
     func updateLabels() {
